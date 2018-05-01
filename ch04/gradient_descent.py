@@ -25,7 +25,7 @@ def gradient_descent(f, init_x, lr=0.01, step_num=100):
     return x, np.array(x_history)
 
 
-# 변수가 두 개인(여기서는 x[0], x[1]) 함수
+# 변수가 두 개인(여기서는 x[0], x[1]) 함수 <- init_x 를 일차원에 원소가 2개로 테스트
 def function_2(x):
     return np.sum(x ** 2)   # x[0] ** 2 + x[1] ** 2
 
