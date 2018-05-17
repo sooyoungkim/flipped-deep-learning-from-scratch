@@ -22,8 +22,11 @@ def _numerical_gradient_no_batch(f, x):
         x[idx] = tmp_val - h
         fxh2 = f(x)
 
+        # 기울기 계산
         grad[idx] = (fxh1 - fxh2) / (2 * h)
-        x[idx] = tmp_val  # 값 복원
+
+        # 값 복원 -> 매개변수들의 기울기를 구할때 해당 매개변수 외의 값은 고정되어 있어야 한다.
+        x[idx] = tmp_val
 
     return grad
 

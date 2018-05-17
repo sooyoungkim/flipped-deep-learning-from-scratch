@@ -4,7 +4,7 @@
 ##############################################################################
 import numpy as np
 import matplotlib.pylab as plt
-from ch04 import gradient
+from common import gradient2 as gradient
 
 
 # 경사 하강법

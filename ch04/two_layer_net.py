@@ -7,8 +7,8 @@ import sys, os
 
 sys.path.append(os.pardir)  # 부모 디렉터리의 파일을 가져올 수 있도록 설정
 from common.functions import *
-from ch04 import gradient
-# from common.gradient import numerical_gradient
+from common import gradient2 as gradient
+# from common import gradient
 
 # 신경망에는 적응 가능한 가중치와 편향이 있고, 이 가중치와 편향을 훈련 데이터에 적응하도록 조정하는 과정을 학습이라 합니다.
 class TwoLayerNet:

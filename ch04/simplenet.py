@@ -7,7 +7,7 @@ import sys, os
 sys.path.append(os.pardir)  # 부모 디렉터리의 파일을 가져올 수 있도록 설정
 import numpy as np
 from common import functions
-from ch04 import gradient
+from common import gradient2 as gradient
 
 
 class simpleNet:
