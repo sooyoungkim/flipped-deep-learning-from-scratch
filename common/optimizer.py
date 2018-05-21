@@ -79,7 +79,8 @@ class AdaGrad:
             params[key] -= self.lr * grads[key] / (np.sqrt(self.h[key]))
 
 
-"""AdaGrad 개선한 방식으로
+""" Root Mean Square prop
+    AdaGrad 개선한 방식으로
     Adagrad의 식에서 gradient의 제곱값을 더해나가면서 구한 Gt 부분을 합이 아니라 지수평균으로 바꾸어서 대체한 방법이다.
         -> 지수이동평균(Exponential (Weighted) Moving Average, E(W)MA)
                 : 과거 기울기의 반영 규모를 기하급수적으로 감소시킨다.
@@ -99,11 +100,12 @@ class RMSprop:
                 self.h[key] = np.zeros_like(val)
 
         for key in params.keys():
+            # 분산 mean square
             # h <- ah + (1 - a) * (dw * dw)
             self.h[key] *= self.decay_rate
             self.h[key] += (1 - self.decay_rate) * grads[key] * grads[key]
-            # 1/sqrt(h)
-            params[key] -= self.lr * grads[key] / (np.sqrt(self.h[key]) + 1e-7)
+            # 표준편차 root mean square : 1/sqrt(h)
+            params[key] -= self.lr * grads[key] / (np.sqrt(self.h[key]) + 1e-8)
 
 
 """Adam

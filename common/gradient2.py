@@ -108,7 +108,7 @@ if __name__ == '__main__':
     m0 = np.arange(3)
     m1 = np.arange(5)
 
-    X_, Y_ = np.meshgrid(m0, m1)
+    X_, Y_ = np.meshgrid(m0, m1)  # x축을 나타내는 점들(0, 1, 2), y축을 나타내는 점들 (0, 1, 2, 3, 4)
     print(X_)
     # [[0 1 2]
     #  [0 1 2]
@@ -134,4 +134,3 @@ if __name__ == '__main__':
     plt.xlabel('m0')
     plt.ylabel('m1')
     plt.show()
-
