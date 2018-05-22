@@ -199,6 +199,7 @@ class BatchNormalization:
 
         """
         정규화한 결과값 -> 대개 활성화 계층의 입력으로 사용된다.
+        (배치 정규화 계층 앞 또는 뒤에 삽입된다.)
         """
         out = self.gamma * xn + self.beta
         return out
@@ -230,9 +231,11 @@ class BatchNormalization:
         # 편차 미분 추가
         dxc += (2.0 / self.batch_size) * self.xc * dvar
         # 평균 미분
-        dmu = np.sum(dxc, axis=0)
+        #dmu = np.sum(dxc, axis=0)
+        #dx = dxc - dmu / self.batch_size
 
-        dx = dxc - dmu / self.batch_size
+        dmu = -np.sum(dxc, axis=0)
+        dx = dxc + dmu / self.batch_size
 
         self.dgamma = dgamma
         self.dbeta = dbeta
@@ -240,6 +243,31 @@ class BatchNormalization:
         return dx
 
 
+class Dropout:
+    def __init__(self, dropout_ratio=0.5):
+        self.dropout_ratio = dropout_ratio
+        self.mask = None
+
+    def forward(self, x, train_flg=True):
+        if train_flg:
+            # dropout 비율만큼 무작위 삭제, 신호 흘리지 않는다.
+            # dropout_ratio 보다 큰 값은 True로 작거나 같으면 False로 저장
+            # 배치사이즈 100이면 True 또는 Fasle로 이루어진 (100, 100)
+            # *x.shape = x.shape[0]
+            self.mask = np.random.rand(x.shape[0]) > self.dropout_ratio
+            # True -> * 1,  False -> * 0
+            return x * self.mask
+            # [[0.         0.         0.... 0.         0.         0.3155615]
+            #  [0.         0.         0.... 0.         0.         0.07640247]
+            # ...
+            #  [0.         0.         0.... 0.         0.         0.32959045]]
+        else:
+            # dropout 비율을 빼고 신호 흘린다.
+            return x * (1.0 - self.dropout_ratio)
+
+    def backward(self, dout):
+        #print("self.mask shape ->", self.mask.shape)  # (100, 100)
+        return dout * self.mask
 
 
 if __name__ == '__main__':

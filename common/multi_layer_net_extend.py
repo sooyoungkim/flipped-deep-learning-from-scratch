@@ -29,7 +29,8 @@ class MultiLayerNetExtend:
     def __init__(self, input_size, hidden_size_list, output_size
                  , activation='relu', weight_init_std='relu'
                  , weight_decay_lambda=0
-                 , use_dropout=False, dropout_ration = 0.5
+                 , use_dropout=False
+                 , dropout_ration = 0.5
                  , use_batchnorm=False):
 
         self.input_size = input_size
@@ -54,7 +55,7 @@ class MultiLayerNetExtend:
             # (1) Affine 계층
             self.layers['Affine' + str(idx)] = layers.Affine(self.params['W' + str(idx)],
                                                       self.params['b' + str(idx)])
-            # (2) BatchNormalization 계층
+            # (2) < BatchNormalization 계층 >
             if self.use_batchnorm:
                 # 각 계층별 배치 정규화 계층에서 사용할 매개변수 최기화
                 # 원본 그대로에서 시작하는 것으로 초기화. 1배 확대(gamma), 이동 0(beta)
@@ -65,9 +66,9 @@ class MultiLayerNetExtend:
             # (3) Activation function
             self.layers['Activation_function' + str(idx)] = activation_layer[activation]()
 
-            # (4) Dropout 계층 보고서 사용하자~~~
-            # if self.use_dropout:
-            #     self.layers['Dropout' + str(idx)] = Dropout(dropout_ration)
+            # (4) Dropout 계층
+            if self.use_dropout:
+                self.layers['Dropout' + str(idx)] = layers.Dropout(dropout_ration)
 
         # 출력층 Affine
         idx = self.hidden_layer_num + 1
@@ -92,16 +93,16 @@ class MultiLayerNetExtend:
             scale = weight_init_std
             # 앞 계층의 노드 수를 고려한 가중치의 표준편차
             if str(weight_init_std).lower() in ('relu', 'he'):
-                scale = np.sqrt(2.0 / all_size_list[idx - 1])  # ReLU
+                scale = np.sqrt(2.0 / all_size_list[idx - 1])
             elif str(weight_init_std).lower() in ('sigmoid', 'xavier'):
-                scale = np.sqrt(1.0 / all_size_list[idx - 1])  # sigmoid
+                scale = np.sqrt(1.0 / all_size_list[idx - 1])
             # 가중치의 표준편차 적용한(앞 계층의 노드 수 X 뒷 계층의 노드 수) 형상으로 매개변수 초기화
             self.params['W' + str(idx)] = scale * np.random.randn(all_size_list[idx - 1], all_size_list[idx])
             self.params['b' + str(idx)] = np.zeros(all_size_list[idx])
 
     def predict(self, x, train_flg=False):
         for key, layer in self.layers.items():
-            # 계층에 배치 정규화나 드롭아웃 계층을 추가 했다면 처리해준다.
+            # < 계층에 배치 정규화나 드롭아웃 계층을 추가 했다면 처리해준다. >
             if "Dropout" in key or "BatchNorm" in key:
                 x = layer.forward(x, train_flg)
             else:
@@ -130,7 +131,7 @@ class MultiLayerNetExtend:
             # 1/2 * lambda * (가중치 제곱후 각 원소를 모두 더한 값)
             weight_decay += 0.5 * self.weight_decay_lambda * np.sum(W ** 2)
 
-        # 손실함수 + 가중치 감소
+        # 손실함수_new = 손실함수_old + 가중치 감소
         # last_layer로 SoftmaxWithLoss 사용 -> 오차역전파법에 weight_decay 미분한 값(lambda * W)이 더해진다.
         return self.last_layer.forward(y, t) + weight_decay
 
@@ -160,7 +161,6 @@ class MultiLayerNetExtend:
         """
         # forward
         loss = self.loss(x, t, train_flg=True)
-        print("loss : ", loss)
 
         # backward
         dout = 1
@@ -175,10 +175,11 @@ class MultiLayerNetExtend:
         grads = {}
         # hidden_layer_num + 1 만큼 (출력층 Affine 포함)
         for idx in range(1, self.hidden_layer_num + 2):
-            # 각 Affine 층의 가중치 매개변수에 가중치 감소 미분값을 더해준다.
+            # 각 Affine 층의 가중치 매개변수에 가중치 감소의 미분값을 더해준다.
             grads['W' + str(idx)] = self.layers['Affine' + str(idx)].dW + self.weight_decay_lambda * self.params['W' + str(idx)]
             grads['b' + str(idx)] = self.layers['Affine' + str(idx)].db
 
+            # < BatchNormalization 계층 사용한다면 매개변수 갱신해준다.>
             if self.use_batchnorm and idx != self.hidden_layer_num + 1:
                 grads['gamma' + str(idx)] = self.layers['BatchNorm' + str(idx)].dgamma
                 grads['beta' + str(idx)] = self.layers['BatchNorm' + str(idx)].dbeta
@@ -203,9 +204,11 @@ class MultiLayerNetExtend:
 
         grads = {}
         for idx in range(1, self.hidden_layer_num + 2):
+            # 가중치 매개변수에 가중치 감소의 미분값을 더해준다.
             grads['W' + str(idx)] = gradient2.numerical_gradient(loss_W, self.params['W' + str(idx)])
             grads['b' + str(idx)] = gradient2.numerical_gradient(loss_W, self.params['b' + str(idx)])
 
+            # < BatchNormalization 계층 사용한다면 매개변수 갱신해준다.>
             if self.use_batchnorm and idx != self.hidden_layer_num + 1:
                 grads['gamma' + str(idx)] = gradient2.numerical_gradient(loss_W, self.params['gamma' + str(idx)])
                 grads['beta' + str(idx)] = gradient2.numerical_gradient(loss_W, self.params['beta' + str(idx)])

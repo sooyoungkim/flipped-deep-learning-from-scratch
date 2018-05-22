@@ -78,7 +78,6 @@ def __train(weight_init_std):
             epoch_cnt += 1
             if epoch_cnt >= max_epochs: break
 
-    print("epoch_cnt : ", epoch_cnt)
     # 훈련 결과 리턴
     return train_acc_list, bn_train_acc_list
 
