@@ -51,23 +51,27 @@ optimizers["RMSprop"] = RMSprop(lr=0.2)
 # optimizers["Momentum 0.001"] = Momentum(lr=0.001) # 3500
 
 
-
-
 idx = 1
+# optimizer 별로 실행해서 비교해보자
 for key in optimizers:
     optimizer = optimizers[key]
     x_history = []
     y_history = []
-    params['x'], params['y'] = init_pos[0], init_pos[1]
+    params['x'], params['y'] = init_pos[0], init_pos[1]  # x와 y 초기값 설정
 
     # 30회 반복
-    for i in range(3500):
+    for i in range(30):
         x_history.append(params['x'])
         y_history.append(params['y'])
 
-        # 기울기 최적화 업데이트
+        # 기울기 구하기
         grads['x'], grads['y'] = df(params['x'], params['y'])   # 미분
-        optimizer.update(params, grads)     # 기울기 최적화
+
+        # 기울기 최적화 업데이트
+        #   - 예)     초기값 세팅된 1회 : params: {'x': -7.0, 'y': 2.0} & grads : {'x': 0, 'y': 0}
+        #   - 예) 최적화 업데이트 후 2회 : params: {'x': -5.5, 'y': 0.5} & grads : {'x': -0.7, 'y': 4.0}
+        #         ...
+        optimizer.update(params, grads)
 
     # x축과 y축의 값
     x = np.arange(-10, 10, 0.01)  # -10 <= x < 10 (0.01 만큼씩) : x: [-10. - 9.99 - 9.98...   9.97   9.98   9.99]
@@ -83,7 +87,7 @@ for key in optimizers:
     Z[mask] = 0  # 결과값 중 7보다 큰 것을(True) 0으로 masking.
 
     # 그래프 그리기 (2 X 2, )
-    plt.subplot(1, 2, idx)
+    plt.subplot(2, 2, idx)
     idx += 1
     plt.plot(x_history, y_history, 'o-', color="red")
     plt.contour(X, Y, Z)    # X, Y, Z 윤곽 표시 (등고선)

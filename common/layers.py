@@ -255,6 +255,7 @@ class Dropout:
             # 배치사이즈 100이면 True 또는 Fasle로 이루어진 (100, 100)
             # *x.shape = x.shape[0]
             self.mask = np.random.rand(x.shape[0]) > self.dropout_ratio
+            # drop!!
             # True -> * 1,  False -> * 0
             return x * self.mask
             # [[0.         0.         0.... 0.         0.         0.3155615]
