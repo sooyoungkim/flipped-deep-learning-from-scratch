@@ -10,6 +10,7 @@
 ##############################################################################
 import numpy as np
 from common.functions import *
+from common import util
 
 class Relu:
     def __init__(self):
@@ -270,60 +271,245 @@ class Dropout:
         #print("self.mask shape ->", self.mask.shape)  # (100, 100)
         return dout * self.mask
 
+class Convolution:
+    # W : 필터
+    def __init__(self, W, b, stride=1, pad=0):
+        self.W = W
+        self.b = b
+        self.stride = stride
+        self.pad = pad
+
+        # 중간 데이터(backward 시 사용)
+        self.x = None
+        self.col = None
+        self.col_W = None
+
+        # 가중치와 편향 매개변수의 기울기
+        self.dW = None
+        self.db = None
+
+    def forward(self, x):
+        FN, C, FH, FW = self.W.shape
+        N, C, H, W = x.shape
+        # 출력 크키
+        out_h = 1 + int((H + 2*self.pad - FH) / self.stride)
+        out_w = 1 + int((W + 2*self.pad - FW) / self.stride)
+
+        # 입력 데이터에서 필터를 적용하는 영역별로 가로로 전개
+        col = util.im2col(x, FH, FW, self.stride, self.pad)
+        # 필터를 2차원 배열로 변형(reshape)하고(FN개의 묶음으로 변경) + Transpose 해서 세로로 전개 <- 필터는 im2col 할 필요 없다.
+        col_W = self.W.reshape(FN, -1).T
+        # < FN, C, FH, FW = 1, 2, 3, 3 일때 >
+        #     (1) self.W.reshape(FN, -1) 결과
+        #             [[-0.00558132 - 0.00473335  0.00669913 - 0.0099481   0.0183686 - 0.01924093
+        #               - 0.00076841  0.00406638  0.00376849 - 0.00606364  0.00859418 - 0.01257911
+        #               0.00217284  0.0036043   0.02057647  0.00256673  0.00883204 - 0.01496615]]
+        #     (2) Transpose 결과
+        #             [[-0.00558132]
+        #              [-0.00473335]
+        #              [0.00669913]
+        #              [-0.0099481]
+        #              [0.0183686]
+        #              [-0.01924093]
+        #              [-0.00076841]
+        #              [0.00406638]
+        #              [0.00376849]
+        #              [-0.00606364]
+        #              [0.00859418]
+        #              [-0.01257911]
+        #              [0.00217284]
+        #              [0.0036043]
+        #              [0.02057647]
+        #              [0.00256673]
+        #              [0.00883204]
+        #              [-0.01496615]]
+
+        out = np.dot(col, col_W) + self.b
+        # 원소 수가 변환 후에도 똑같이 유지되도록 묶어준다.(-1 사용) && 축 순서를 바꿔준다.
+        out = out.reshape(N, out_h, out_w, -1).transpose(0, 3, 1, 2)
+        # reshape: [[[[2.10218838]
+        #             [2.11292464]
+        #             [2.1236609 ]]
+        #
+        #            [[2.20955099]
+        #             [2.22028725]
+        #             [2.23102351]]
+        #
+        #            [[2.31691359]
+        #             [2.32764985]
+        #             [2.33838611]]]]
+        # out: [[[[2.10218838 2.11292464 2.1236609]
+        #         [2.20955099 2.22028725 2.23102351]
+        #         [2.31691359 2.32764985 2.33838611]]]]
+
+        self.x = x
+        self.col = col
+        self.col_W = col_W
+
+        return out
+
+    def backward(self, dout):
+        # print("Convolution backward dout : ", dout)
+        FN, C, FH, FW = self.W.shape
+        dout = dout.tranpose(0, 2, 3, 1).reshape(-1, FN)
+        # dout = dout.reshape(-1, FN)
+
+        self.db = np.sum(dout, axis=0)
+        self.dW = np.dot(self.col.T, dout)
+        self.dW = self.dW.transpose(1, 0).reshape(FN, C, FH, FW)
+
+        dcol = np.dot(dout, self.col_W.T)
+        dx = util.col2im(dcol, self.x.shape, FH, FW, self.stride, self.pad)
+
+        return dx
+
+
+class Pooling:
+    def __init__(self, pool_h, pool_w, stride=1, pad=0):
+        self.pool_h = pool_h
+        self.pool_w = pool_w
+        self.stride = stride
+        self.pad = pad
+
+        # backward 시 사용
+        self.x = None
+        self.arg_max = None
+
+    def forward(self, x):
+        N, C, H, W = x.shape
+        out_h = int(1 + (H - self.pool_h) / self.stride)
+        out_w = int(1 + (W - self.pool_w) / self.stride)
+
+        # 입력 데이터에서 풀링을 적용하는 영역별로 가로로 전개
+        col = util.im2col(x, self.pool_h, self.pool_w, self.stride, self.pad)
+        # conv 계층의 입력 데이터와는 다르게 가로로 전개한 데이터를 풀링 크기(pool_h * pool_w)만큼 단위로 2차원 배열을 만든다(reshape)
+        # 풀링 크기 만큼씩 크기로 원소 수를 유지하며 몇 개의 묶음으로 변형된다.
+        col = col.reshape(-1, self.pool_h * self.pool_w)
+        # 행(row)별 최댓값을 구한다.
+        arg_max = np.argmax(col, axis=1)
+        out = np.max(col, axis=1)
+        out = out.reshape(N, out_h, out_w, C).transpose(0, 3, 1, 2)
+
+        self.x = x
+        self.arg_max = arg_max
+        print("arg_max  : ", self.arg_max, self.arg_max.size)
+
+        return out
+
+    def backward(self, dout):
+        # print("Pooling backward dout : ", dout)
+
+        # 왜??
+        dout = dout.transpose(0, 2, 3, 1)
+
+        pool_size = self.pool_h * self.pool_w
+        # max pooling의 역젼파값 : 최대값이 속해 있는 요소의 로컬 그래디언트는 1, 나머지는 0이다.
+        # dout 원소 개수 X pooling size 의 matrix 생성
+        # 최대값이 아닌 원소들의 로컬 그래디언트는 0이므로 dout을 곱해도 0이 되므로 0으로 초기화시킨다.
+        dmax = np.zeros((dout.size, pool_size))
+        print("dmax.shape before : ", dmax.shape)
+
+        # arg_max.size == dout.flatten size ??
+        # zip 형태로 묶어, dmax의 해당 위치에 dout flatten 값을 하나씩 담는다. (최대값이 속해 있는 요소의 로컬 그래디언트는 1 * dout)
+        dmax[np.arange(self.arg_max.size), self.arg_max.flatten()] = dout.flatten()
+        dmax = dmax.reshape(dout.shape + (pool_size,))
+        print("dmax.shape after : ", dmax.shape)
+
+        # 채널별 pooling 적용 영역끼리 하나의 row로 묶는다. ???
+        # 1row - 모든 데이터에대해 채널1의 폴링적용영역 전체 ?
+        # 2row - 모든 데이터에대해 채널2의 폴링적용영역 전체 ?
+        print("dmax.shape 0, 1, 2", dmax.shape[0], dmax.shape[1], dmax.shape[2])
+        dcol = dmax.reshape(dmax.shape[0] * dmax.shape[1] * dmax.shape[2], -1)
+        dx = util.col2im(dcol, self.x.shape, self.pool_h, self.pool_w, self.stride, self.pad)
+
+        return dx
+
 
 if __name__ == '__main__':
-    X1 = np.array([[1.0, -0.5], [-2.0, 3.0]])
+    # X1 = np.array([[1.0, -0.5], [-2.0, 3.0]])
+    #
+    # """ masking 테스트 """
+    # mask = (X1 <= 0)
+    # print(mask)
+    # # [[False  True]
+    # #  [True False]]
+    #
+    # """  Relu 테스트 """
+    # test_relu = Relu()  # 객체 생성
+    # out = test_relu.forward(X1)
+    # print(out)
+    # # [[1. 0.]
+    # #  [0. 3.]]
+    #
+    #
+    # """ 배치 정규화 테스트 """
+    # X = np.array([[1.0, 0.5], [2.0, 3.0], [3.0, 3.0]])
+    #
+    # mu = X.mean(axis=0)
+    # print(mu)
+    # # [2.         2.16666667]
+    #
+    # # 편차 (subtract mean vector) 계산
+    # xc = X - mu
+    # print(xc)
+    # # [[-1. - 1.66666667]
+    # #  [0.    0.83333333]
+    # #  [1.    0.83333333]]
+    #
+    # # "열을 기준"으로 분산 (variance) 계산
+    # var = np.mean(xc ** 2, axis=0)
+    # print(var)
+    # # [0.66666667 1.38888889]
+    #
+    # # 표준편차
+    # std = np.sqrt(var + 10e-7)
+    # print(std)
+    # # [0.81649719 1.17851173]
+    #
+    # # 정규화
+    # xn = xc / std
+    # print(xn)
+    # # [[-1.22474395 - 1.41421305]
+    # #  [0.            0.70710653]
+    # #  [1.22474395    0.70710653]]
+    #
+    # """ 제곱 & 합 """
+    # print(X ** 2)
+    # # [[1.   0.25]
+    # #  [4.   9.]
+    # #  [9.   9.]]
+    # print(np.sum(X ** 2))
+    # # 32.25 = 1. + 0.25 + 4. + 9. + 9. + 9. (각 원소를 모두 더한 값)
 
-    """ masking 테스트 """
-    mask = (X1 <= 0)
-    print(mask)
-    # [[False  True]
-    #  [True False]]
 
-    """  Relu 테스트 """
-    test_relu = Relu()  # 객체 생성
-    out = test_relu.forward(X1)
-    print(out)
-    # [[1. 0.]
-    #  [0. 3.]]
+    """ pooling 테스트 """
+    dout = np.array([[111, 112, 113, 114, 115, 116, 117],
+                     [161, 162, 163, 164, 165, 166, 167],
+                     [171, 172, 173, 174, 175, 176, 177]])
+
+    arg_max =  np.array([[5, 7, 5, 7, 5, 7, 5],
+                         [1, 1, 1, 1, 1, 1, 1],
+                         [2, 2, 2, 2, 2, 2, 2]])
+    print(arg_max.size, arg_max.flatten())
+    # 21 [5 7 5 7 5 7 5 1 1 1 1 1 1 1 2 2 2 2 2 2 2]
+
+    pool_size = 3 * 3
+    dmax = np.zeros((dout.size, pool_size))
+    print(dmax)
+    print("dmax.shape before : ", dmax.shape) # (21, 9)
+
+    print(np.arange(arg_max.size), arg_max.flatten())
+    # [ 0  1  2  3  4  5  6  7  8  9 10 11 12 13 14 15 16 17 18 19 20] [5 7 5 7 5 7 5 1 1 1 1 1 1 1 2 2 2 2 2 2 2]
+    dmax[np.arange(arg_max.size), arg_max.flatten()] = dout.flatten()
+    print(dmax)
+    # zip 형태로 (0, 5), (1, 7), (2, 5) 등..의 위치에 dout flatten 값을 넣는다.
 
 
-    """ 배치 정규화 테스트 """
-    X = np.array([[1.0, 0.5], [2.0, 3.0], [3.0, 3.0]])
 
-    mu = X.mean(axis=0)
-    print(mu)
-    # [2.         2.16666667]
+    # # 최대값
+    # dmax[np.arange(self.arg_max.size), self.arg_max.flatten()] = dout.flatten()
+    # dmax = dmax.reshape(dout.shape + (pool_size,))
+    # print("dmax.shape after : ", dmax.shape)
 
-    # 편차 (subtract mean vector) 계산
-    xc = X - mu
-    print(xc)
-    # [[-1. - 1.66666667]
-    #  [0.    0.83333333]
-    #  [1.    0.83333333]]
 
-    # "열을 기준"으로 분산 (variance) 계산
-    var = np.mean(xc ** 2, axis=0)
-    print(var)
-    # [0.66666667 1.38888889]
-
-    # 표준편차
-    std = np.sqrt(var + 10e-7)
-    print(std)
-    # [0.81649719 1.17851173]
-
-    # 정규화
-    xn = xc / std
-    print(xn)
-    # [[-1.22474395 - 1.41421305]
-    #  [0.            0.70710653]
-    #  [1.22474395    0.70710653]]
-
-    """ 제곱 & 합 """
-    print(X ** 2)
-    # [[1.   0.25]
-    #  [4.   9.]
-    #  [9.   9.]]
-    print(np.sum(X ** 2))
-    # 32.25 = 1. + 0.25 + 4. + 9. + 9. + 9. (각 원소를 모두 더한 값)
 

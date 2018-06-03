@@ -36,6 +36,7 @@ class Trainer:
         self.current_iter = 0
         self.current_epoch = 0
 
+        # trainder 결과 -> 학습시키는 동안의 loss 이력, 정확도 이력 결과
         self.train_loss_list = []
         self.train_acc_list = []
         self.test_acc_list = []
@@ -45,9 +46,11 @@ class Trainer:
         x_batch = self.x_train[batch_mask]
         t_batch = self.t_train[batch_mask]
 
+        # 가중치 업데이트 -> backward
         grads = self.network.gradient(x_batch, t_batch)
         self.optimizer.update(self.network.params, grads)
 
+        # 손실 함수 -> forward
         loss = self.network.loss(x_batch, t_batch)
         self.train_loss_list.append(loss)
         if self.verbose: print("train loss:" + str(loss))
@@ -62,6 +65,7 @@ class Trainer:
                 x_train_sample, t_train_sample = self.x_train[:t], self.t_train[:t]
                 x_test_sample, t_test_sample = self.x_test[:t], self.t_test[:t]
 
+            # 학습시마다의 정확도 이력 저장 -> pyplot 사용해 그래프로 훈련과 검증용 데이터의 정확도 비교 가능
             train_acc = self.network.accuracy(x_train_sample, t_train_sample)
             test_acc = self.network.accuracy(x_test_sample, t_test_sample)
             self.train_acc_list.append(train_acc)
@@ -73,9 +77,11 @@ class Trainer:
         self.current_iter += 1
 
     def train(self):
+        # max_iter 회수만큼 학습 시키기
         for i in range(self.max_iter):
             self.train_step()
 
+        # 정확도 확인
         test_acc = self.network.accuracy(self.x_test, self.t_test)
 
         if self.verbose:

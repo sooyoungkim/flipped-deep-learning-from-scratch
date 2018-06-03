@@ -54,7 +54,7 @@ def function_2(x):
 # 접선 방정식 구하기
 def tangent_line(f, a):
     d = numerical_gradient(f, a)
-    print(d)
+    # print(d)
 
     return lambda x: d * x - d * a + f(a)
 
