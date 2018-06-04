@@ -2,21 +2,36 @@ import numpy as np
 import matplotlib.pylab as plt
 
 
-x = np.array([-1.0, 1.0, 2.0])
-print(x)    # [-1.  1.  2.]
+"""출력층 함수 : 항등 함수
 
-y = x > 0
-print(y)    # [False  True  True]
+    :parameter
+    ----------------
+    x : 입력 데이터
 
-y = y.astype(np.int)
-print(y)    # [0 1 1]
+    :return
+    ----------------
+    x > 0 이면 1
+    나머지는    0
 
-
+"""
 def step_function(x):
     return np.array(x > 0, dtype=np.int)
 
 
-x_ = np.arange(-5.0, 5.0, 0.1)
+data = np.array([-1.0, 1.0, 2.0])
+print(data)    # [-1.  1.  2.]
+
+z = np.array(data > 0)
+print(z)    # [False  True  True]
+
+out = data > 0
+print(out)    # [False  True  True]
+
+out = out.astype(np.int)
+print(out)    # [0 1 1]
+
+# -5.0(include) ~ 5.0(exclude) 까지 0.1씩 증가시킨 값으로 배열 생성
+x = np.arange(-5.0, 5.0, 0.1)
 # [-5.00000000e+00 -4.90000000e+00 -4.80000000e+00 -4.70000000e+00
 #  -4.60000000e+00 -4.50000000e+00 -4.40000000e+00 -4.30000000e+00
 #  -4.20000000e+00 -4.10000000e+00 -4.00000000e+00 -3.90000000e+00
@@ -42,7 +57,8 @@ x_ = np.arange(-5.0, 5.0, 0.1)
 #   3.80000000e+00  3.90000000e+00  4.00000000e+00  4.10000000e+00
 #   4.20000000e+00  4.30000000e+00  4.40000000e+00  4.50000000e+00
 #   4.60000000e+00  4.70000000e+00  4.80000000e+00  4.90000000e+00]
-y_ = step_function(x_)
-plt.plot(x_, y_)        # x축과 y축 추가
+
+y = step_function(x)
+plt.plot(x, y)        # x축과 y축 추가
 plt.ylim(-0.1, 1.1)     # y축의 범위 지정
 plt.show()

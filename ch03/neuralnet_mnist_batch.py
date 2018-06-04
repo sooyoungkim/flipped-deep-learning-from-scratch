@@ -23,6 +23,8 @@ def get_data():
 
 
 def init_network():
+    # 이미 학습된 매개변수(가중치, 편향)가 저장된 피클파일 읽어오기
+    #   sample_weight.pkl 파일 안의 데이터는 -> simple_neuralnet.py 파일에서 유추해 볼 수 있다.
     with open("sample_weight.pkl", 'rb') as f:
         network = pickle.load(f)
 
@@ -89,7 +91,7 @@ zp = np.argmax(Z, axis=1)
 print(zp)             # [1 2 1 0]
 
 #############################################################################
-# (1) True 인 원소의 개수를 모두 더한다.
+# (1) True 인 원소의 개수를 출력한다.
 print(np.sum(np.array([ True, False, True, False, False])))  # 2
 print(np.sum(np.array([ True, False, True, True, False])))   # 3
 

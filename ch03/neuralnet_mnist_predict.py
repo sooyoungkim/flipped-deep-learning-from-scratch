@@ -29,6 +29,7 @@ def get_data():
 
 def init_network():
     # 이미 학습된 매개변수(가중치, 편향)가 저장된 피클파일 읽어오기
+    #   sample_weight.pkl 파일안의 데이터는 -> simple_neuralnet.py 파일에서 유추해 볼 수 있다.
     with open("sample_weight.pkl", 'rb') as f:
         network = pickle.load(f)
 
