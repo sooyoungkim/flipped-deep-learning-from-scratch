@@ -1,4 +1,4 @@
-from ch05 import layer_naive as na
+from ch05 import layer_naive_mul_add as na
 
 apple = 100
 apple_num = 2

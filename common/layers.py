@@ -8,22 +8,26 @@
 # 6.3   BatchNormalization 계층
 # 6.4.3 Dropout계층
 ##############################################################################
-import numpy as np
 from common.functions import *
 from common import util
 
 class Relu:
     def __init__(self):
+        # 역전파에서 사용하기 위해 저장해둔다.
         self.mask = None
 
     def forward(self, x):
+        # 입력데이터 x가 x <= 0인 위치를 저장해둔다.
+        # bool 배열 생성,
         self.mask = (x <= 0)
         out = x.copy()
+        # True인 인덱스의 값에 0 대입, 나머지는 그대로 출력
         out[self.mask] = 0
 
         return out
 
     def backward(self, dout):
+        # 입력데이터 x가 x <= 0 였으면 미분값은 0, 아니면 그대로 흘린다.
         dout[self.mask] = 0
         dx = dout
 
@@ -32,6 +36,7 @@ class Relu:
 
 class Sigmoid:
     def __init__(self):
+        # 역전파에서 사용하기 위해 저장해둔다.
         self.out = None
 
     def forward(self, x):
@@ -42,7 +47,7 @@ class Sigmoid:
         return out
 
     def backward(self, dout):
-        # 순전파의 출력값을 사용하여 역전파를 구함
+        # 순전파의 출력값만으로 역전파를 구할 수 있다.
         dx = dout * (1.0 - self.out) * self.out
 
         return dx
@@ -50,7 +55,7 @@ class Sigmoid:
 
 class Affine:
     def __init__(self, W, b):
-        self.W = W
+        self.W = W      # 2차원 데이터 (이전층 뉴런수 X 다음층의 뉴런수)
         self.b = b
         self.x = None
         self.dW = None  # 가중치 매개변수의 미분
@@ -58,14 +63,23 @@ class Affine:
         self.original_x_shape = None
 
     def forward(self, x):
-        # 텐서 대응
+        # <텐서 대응 (reshape 하기 전에 형상 저장해둔다. 역전파 결과가 원래 형상과 같아야하므로)>
         self.original_x_shape = x.shape
 
+        # 입력 데이터가 하나일때
         if x.ndim == 1:
-            x = x.reshape(1, x.shape[0])
-            # self.x = x
+            # 형상 변형시키기 - 예) 1차원 배열 [1 2 3 4] 형상 (4,)  -> 2차원 배열 [[1 2 3 4]] 형상 (1, 4) 로 변형
+            x = x.reshape(1, x.size)
+            # print("Affine 입력 데이터 형상 변형(1차원일때) : ", x.shape)
+        # 입력 데이터가 하나인 경우를 처리해주시 않으면 입력 데이터 x의 형상은 대략 (4,) 형태이고
+        # x.shape[0]은 4가 된다. (x.shape[1]은 에러발생)
+        # 아래에서 다차원과 동일하게 처리하기위해 reshape으로 형상 변형을 해준것이다.
 
+        # x.shape[0] 개수만큼의 묶음으로 다차원 배열의 원소 수가 변환 후에도 똑같이 유지되도록 묶어준다.
+        # 1차원, 2차원의 경우 현재 형상에는 변경사항이 없다.
+        # <텐서 대응 : 텐서인 경우에는 2차원 배열로 변형되어 dot 연산이 된다. => 내적하는 W가 2차원 데이터이다>
         x = x.reshape(x.shape[0], -1)
+        # print("reshape : ", x, x.shape)
         self.x = x
 
         out = np.dot(self.x, self.W) + self.b
@@ -77,7 +91,7 @@ class Affine:
         self.dW = np.dot(self.x.T, dout)
         self.db = np.sum(dout, axis=0)
 
-        # 입력 데이터 모양 변경(텐서 대응)
+        # <텐서 대응 : 입력 데이터 x에 대해 원래 형상으로 변형>
         dx = dx.reshape(*self.original_x_shape)
         return dx
 
@@ -94,14 +108,16 @@ class SoftmaxWithLoss:
         self.loss = cross_entropy_error(self.y, self.t)
         return self.loss
 
-    # '예측값 - 정답값'이 SoftmaxWithLoss의 역전파 값이다.
+    # '예측값 y - 정답값 t'가 SoftmaxWithLoss의 역전파 값이다.
     def backward(self, dout=1):
         batch_size = self.t.shape[0]     # 배치 데이터 수
-        if self.t.size == self.y.size:   # 정답 레이블이 원-핫 인코딩 형태일 때
+        # 정답 레이블이 원-핫 인코딩 형태이면
+        if self.t.size == self.y.size:
             # 원-핫 인코딩 형태이면 정답인덱스의 값만 1, 나머지는 0 이므로
             # 정답인덱스에서는 : 예측값 - 1
             # 나머지는       : 예측값 - 0 즉, 변경사항 없다.
-            dx = (self.y - self.t) / batch_size     # 왜... batch_size로 나눌까??
+            dx = (self.y - self.t) / batch_size     # todo 왜... batch_size로 나눌까?? 정규화?
+        # 정답 인텍스가 담긴 형태이면
         else:
             dx = self.y.copy()
             # 첫번째 데이터 : dx[0,정답인덱스] = dx[0,정답인덱스] - 1 & 나머지는 그대로,
@@ -109,7 +125,7 @@ class SoftmaxWithLoss:
             # 세번째 데이터 : dx[2,정답인덱스] = dx[2,정답인덱스] - 1 & 나머지는 그대로,
             # ...
             dx[np.arange(batch_size), self.t] -= 1  # zip 형태로 묶어 정답인덱스에 대해서만 뺄셈
-            dx = dx / batch_size
+            dx = dx / batch_size                    # todo 왜... batch_size로 나눌까?? 정규화?
 
         return dx
 
@@ -426,23 +442,51 @@ class Pooling:
 
 
 if __name__ == '__main__':
-    # X1 = np.array([[1.0, -0.5], [-2.0, 3.0]])
-    #
-    # """ masking 테스트 """
+    X1 = np.array([[1.0, -0.5], [-2.0, 3.0]])
+
+    """Relu 테스트"""
+    # # bool 배열
     # mask = (X1 <= 0)
-    # print(mask)
+    # print("mask : ", mask)
     # # [[False  True]
     # #  [True False]]
     #
-    # """  Relu 테스트 """
+    # out = X1.copy()
+    # # True 인 인덱스의 값에 0 대입
+    # out[mask] = 0
+    # print("out : ", out)
+    # # [[1. 0.]
+    # #  [0. 3.]]
+    #
     # test_relu = Relu()  # 객체 생성
     # out = test_relu.forward(X1)
     # print(out)
     # # [[1. 0.]
     # #  [0. 3.]]
+
+    """Affine 테스트"""
+    # W = np.array([[1, 2, 3], [4, 5, 6]])
+    # b = np.array([2, 2, 2])
     #
-    #
-    # """ 배치 정규화 테스트 """
+    # # 입력데이터가 1차원 & 2차원인 경우
+    # test_affine = Affine(W, b)
+    # test_affine.forward(np.array([1.0, -0.5]))
+    # test_affine.forward(np.array([[1.0, -0.5],
+    #                               [2.0, -1.0]]))
+    # # 입력데이터가 텐서인 경우
+    # W = np.array([[1, 2], [3, 4], [5, 6], [7, 8], [9, 0], [1, 9]])
+    # b = np.array([2, 2])
+    # test_affine = Affine(W, b)
+    # test_affine.forward(np.array([[[1.0, -0.5, 0.],
+    #                                [2.0, -1.0, 0.]],
+    #                               [[3.0, -1.5, 0.],
+    #                                [4.0, -2,   0.]]]))
+    # # 입력 데이터 2 X 2 X 3 -> forward()에서 2 X 6 으로 변경
+    # #                             [[1. - 0.5  0.   2. - 1.   0.]
+    # #                              [3. - 1.5  0.   4. - 2.   0.]]
+
+
+    """배치 정규화 테스트"""
     # X = np.array([[1.0, 0.5], [2.0, 3.0], [3.0, 3.0]])
     #
     # mu = X.mean(axis=0)
@@ -483,33 +527,33 @@ if __name__ == '__main__':
 
 
     """ pooling 테스트 """
-    dout = np.array([[111, 112, 113, 114, 115, 116, 117],
-                     [161, 162, 163, 164, 165, 166, 167],
-                     [171, 172, 173, 174, 175, 176, 177]])
-
-    arg_max =  np.array([[5, 7, 5, 7, 5, 7, 5],
-                         [1, 1, 1, 1, 1, 1, 1],
-                         [2, 2, 2, 2, 2, 2, 2]])
-    print(arg_max.size, arg_max.flatten())
-    # 21 [5 7 5 7 5 7 5 1 1 1 1 1 1 1 2 2 2 2 2 2 2]
-
-    pool_size = 3 * 3
-    dmax = np.zeros((dout.size, pool_size))
-    print(dmax)
-    print("dmax.shape before : ", dmax.shape) # (21, 9)
-
-    print(np.arange(arg_max.size), arg_max.flatten())
-    # [ 0  1  2  3  4  5  6  7  8  9 10 11 12 13 14 15 16 17 18 19 20] [5 7 5 7 5 7 5 1 1 1 1 1 1 1 2 2 2 2 2 2 2]
-    dmax[np.arange(arg_max.size), arg_max.flatten()] = dout.flatten()
-    print(dmax)
-    # zip 형태로 (0, 5), (1, 7), (2, 5) 등..의 위치에 dout flatten 값을 넣는다.
-
-
-
-    # # 최대값
-    # dmax[np.arange(self.arg_max.size), self.arg_max.flatten()] = dout.flatten()
-    # dmax = dmax.reshape(dout.shape + (pool_size,))
-    # print("dmax.shape after : ", dmax.shape)
+    # dout = np.array([[111, 112, 113, 114, 115, 116, 117],
+    #                  [161, 162, 163, 164, 165, 166, 167],
+    #                  [171, 172, 173, 174, 175, 176, 177]])
+    #
+    # arg_max =  np.array([[5, 7, 5, 7, 5, 7, 5],
+    #                      [1, 1, 1, 1, 1, 1, 1],
+    #                      [2, 2, 2, 2, 2, 2, 2]])
+    # print(arg_max.size, arg_max.flatten())
+    # # 21 [5 7 5 7 5 7 5 1 1 1 1 1 1 1 2 2 2 2 2 2 2]
+    #
+    # pool_size = 3 * 3
+    # dmax = np.zeros((dout.size, pool_size))
+    # print(dmax)
+    # print("dmax.shape before : ", dmax.shape) # (21, 9)
+    #
+    # print(np.arange(arg_max.size), arg_max.flatten())
+    # # [ 0  1  2  3  4  5  6  7  8  9 10 11 12 13 14 15 16 17 18 19 20] [5 7 5 7 5 7 5 1 1 1 1 1 1 1 2 2 2 2 2 2 2]
+    # dmax[np.arange(arg_max.size), arg_max.flatten()] = dout.flatten()
+    # print(dmax)
+    # # zip 형태로 (0, 5), (1, 7), (2, 5) 등..의 위치에 dout flatten 값을 넣는다.
+    #
+    #
+    #
+    # # # 최대값
+    # # dmax[np.arange(self.arg_max.size), self.arg_max.flatten()] = dout.flatten()
+    # # dmax = dmax.reshape(dout.shape + (pool_size,))
+    # # print("dmax.shape after : ", dmax.shape)
 
 
 

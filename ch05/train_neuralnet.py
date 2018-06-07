@@ -8,6 +8,12 @@ from ch05 import two_layer_net
 # 데이터 읽기
 (x_train, t_train), (x_test, t_test) = mnist.load_mnist(normalize=True, one_hot_label=True)
 
+###############################################
+#                                             #
+# ch05/two_layer_net 의 TwoLayerNet을 사용해본다. #
+#   -   #
+#                                             #
+###############################################
 network = two_layer_net.TwoLayerNet(input_size=784, hidden_size=50, output_size=10)
 
 train_size = x_train.shape[0]   # 훈련 데이터수

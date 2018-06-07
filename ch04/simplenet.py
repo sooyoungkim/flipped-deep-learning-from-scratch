@@ -10,7 +10,8 @@ from common import functions
 from common import gradient2 as gradient
 
 
-# 은닉층이 없다. 입력층 -> 출력층의 간단한 형태
+# 1. 은닉층이 없다. 입력층 -> 출력층의 간단한 형태
+# 2. 편향(b)을 사용하지 않았다.
 class simpleNet:
     def __init__(self):
         # 초기화 : 형상이 2 X 3 인 가중치 매개변수
