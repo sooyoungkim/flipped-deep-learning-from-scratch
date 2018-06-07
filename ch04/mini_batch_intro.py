@@ -5,6 +5,7 @@
 import numpy as np
 from dataset.mnist import load_mnist
 
+
 def get_data():
     # 데이터 가져오기 : (훈련 이미지, 훈련 레이블), (시험 이미지, 시험 레이블)
     (x_train, t_train), (x_test, t_test) = load_mnist(normalize=True, flatten=True, one_hot_label=False)
@@ -13,15 +14,17 @@ def get_data():
 
 
 x, t = get_data()
-train_size = x.shape[0]
-print(train_size)       # 60000
-print(np.shape(x))      # (60000, 784)
+train_size = x.shape[0]     # 훈련 데이터 개수
+print(train_size)           # 60000
+print(np.shape(x))          # (60000, 784) = x.shape
 
 batch_size = 10
 
-# 미니배치 획득
-batch_mask = np.random.choice(train_size, batch_size)   # 0 이상 60,000 미만의 수 중에서 무작위로 10개 추출
+# 배치로 사용할 데이터의 인덱스를 랜덤하게 구한다.
+batch_mask = np.random.choice(train_size, batch_size)   # 0 이상 60,000 미만의 수 중에서 무작위로 batch_size(10개)만큼 추출
 print(batch_mask)                                       # [13623 13317 10960 48807 36608 14118 59847 25378 55171 13199]
+
+# 인덱스 배열로 한번에 여러 원소에 접근 가능 -> 미니배치 획득
 x_batch = x[batch_mask]
 t_batch = t[batch_mask]
 print(x_batch)
@@ -48,16 +51,12 @@ print(t_batch)
 #  [0. 1. 0. 0. 0. 0. 0. 0. 0. 0.]]
 
 
-# 기울기 갱신
-#   추론하기: 신경망 출력값(예측하기)
-#       -> 손실계산: 교차 엔트로피 오차 사용 (신경망 출력값(예측하기) & 정답 레이블 사용)
-#           -> 기울기 구하기 (손실함수와 기울기 매개변수 넘파이 배열 사용)
-
-
 
 ###################################
 # 리스트를 zip 형태로
-# y:신경망 결과값(예측값), i:처리할 데이터 수, t:정답 레이블
+# y : 신경망 결과값(예측값),
+# i : 처리할 데이터 수,
+# t : 정답 레이블 (정답 인덱스 배열)
 ###################################
 y = np.array([[3.30, 1.53, 9.90, 8.50, 4.01, 2.47, 6.88, 7.30, 6.81, 2.19],
               [2.25, 9.04, 6.09, 9.92, 7.91, 7.67, 1.25, 3.55, 2.92, 1.95],

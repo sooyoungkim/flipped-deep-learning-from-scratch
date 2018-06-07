@@ -1,6 +1,5 @@
 ##############################################################################
-# 4.5.2 미니 배치 학습
-# 4.5.3
+# 4.5.3 시험데이터로 평가하기
 #
 # 학습
 # 신경망에는 적응 가능한 가중치와 편향이 있고, 이 가중치와 편향을 훈련 데이터에 적응하도록 조정하는 과정을 '학습'이라 합니다.
@@ -25,18 +24,22 @@ import matplotlib.pyplot as plt
 from dataset.mnist import load_mnist
 from ch04 import two_layer_net
 
-# 데이터 읽기
+# 데이터 가져오기
 (x_train, t_train), (x_test, t_test) = load_mnist(normalize=True, one_hot_label=True)
 
-network = two_layer_net.TwoLayerNet(input_size=784, hidden_size=2, output_size=10)   #todo test
-# network = two_layer_net.TwoLayerNet(input_size=784, hidden_size=50, output_size=10)
+###############################################
+#                                             #
+# ch04/two_layer_net 의 TwoLayerNet을 사용해본다. #
+#   - 수치 미분으로 기울기 구하는 방법 엄청 느리다!!!!!  #
+#                                             #
+###############################################
+# --> 테스트 위해 hidden_size=2 등으로 줄여서 사용가능
+network = two_layer_net.TwoLayerNet(input_size=784, hidden_size=50, output_size=10)
 
 # 하이퍼파라미터
-iters_num = 3               # todo test
-batch_size = 10             # todo test
-# iters_num = 10000               # 반복 횟수
-# batch_size = 100                # 미니배치 크기
-train_size = x_train.shape[0]   # 60000
+iters_num = 10000               # 반복 횟수    --> 테스트 위해 작은 값으로 줄여서 사용가능 (< 5)
+batch_size = 1000               # 미니배치 크기 --> 테스트 위해 작은 값으로 줄여서 사용가능 (< 10)
+train_size = x_train.shape[0]   # 이미지 데이터 개수 : 60,000
 learning_rate = 0.1             # 학습률
 
 # 학습 경과 히스토리
@@ -45,20 +48,18 @@ train_acc_list = []
 test_acc_list = []
 
 # 1에폭당 반복 수
-iter_per_epoch = max(1, 1)  # todo test
-# iter_per_epoch = max(train_size / batch_size, 1)
+iter_per_epoch = max(train_size / batch_size, 1)  # --> 테스트 위해 max(1, 1)를 사용해서 결과를 바로 볼 수도 있다.
 
 # 경사하강법 1~4
 # (4/4) 훈련 데이터 중 일부를 무작위로 추출하여 매개변수 갱신하는 작업을 반복한다.
 for i in range(iters_num):
     # (1/4) 미니배치 획득
     batch_mask = np.random.choice(train_size, batch_size)   # 0 이상 60,000 미만의 수 중에서 무작위로 100개 추출
-    x_batch = x_train[batch_mask]   # 훈련용 이미지 데이터
-    t_batch = t_train[batch_mask]   # 훈련용 정답 레이블
+    x_batch = x_train[batch_mask]   # 미니배치 훈련용 이미지 데이터
+    t_batch = t_train[batch_mask]   # 미니배치 훈련용 정답 레이블
 
-    # (2/4) 기울기 계산
-    grad = network.numerical_gradient(x_batch, t_batch)     # 수치미분
-    # grad = network.gradient(x_batch, t_batch)             #
+    # (2/4) 기울기 계산 (수치미분)
+    grad = network.numerical_gradient(x_batch, t_batch)
 
     # (3/4) 매개변수 갱신
     for key in ('W1', 'b1', 'W2', 'b2'):

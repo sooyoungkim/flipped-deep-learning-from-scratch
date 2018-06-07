@@ -10,24 +10,42 @@ import numpy as np
 import matplotlib.pylab as plt
 
 
-# 변수 하나(x)인 함수에 대한 수치 미분 계산 (근사치로 계산하는 미분)
-def numerical_diff(f, x):
-    h = 1e-4                                # 0.0001
-    return (f(x + h) - f(x - h)) / (2 * h)  # h를 무한히 0으로 좁히는 것이 불가능해 생기는 오차가 있다.
+"""변수가 하나인 함수
 
-
-# 변수가 하나인(여기서는 x) 함수
+    parameter
+    ----------------
+    x : scalar 값 변수 
+    
+    return
+    ----------------
+    함수값 
+"""
 def function_1(x):
     return 0.01 * x ** 2 + 0.1 * x
 
 
-# 접선 방정식 구하기
+"""접선 방정식 구하기
+
+    parameter
+    ----------------
+    f : 함수 
+    a : 접점의 x의 값 (scalar)
+    
+    return
+    ----------------
+    접선 방정식 
+"""
 def tangent_line(f, a):
     # 미분 계수 (접선의 기울기)를 구한다.
     d = numerical_diff(f, a)
-    print(d)
     # 접점은 (a, f(a)) -> 방정식을 구해보면 y - f(a) = d(x - a) => y = dx - da + f(a)
     return lambda x: d * x - d * a + f(a)
+
+
+# 수치 미분 계산 (근사치로 계산하는 미분)
+def numerical_diff(f, x):
+    h = 1e-4                                # 0.0001
+    return (f(x + h) - f(x - h)) / (2 * h)  # h를 무한히 0으로 좁히는 것이 불가능해 생기는 오차가 있다.
 
 
 plt.xlabel("x")

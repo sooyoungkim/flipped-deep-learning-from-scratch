@@ -11,11 +11,16 @@ from ch05 import two_layer_net
 # 데이터 읽기
 (x_train, t_train), (x_test, t_test) = mnist.load_mnist(normalize=True, one_hot_label=True)
 
+###############################################
+#                                             #
+# ch05/two_layer_net 의 TwoLayerNet을 사용해본다. #
+#   - 수치 미분으로 기울기 구하는 방법 엄청 느리다!!!!!  #
+#                                             #
+###############################################
 network = two_layer_net.TwoLayerNet(input_size=784, hidden_size=50, output_size=10)
 
 x_batch = x_train[:3]
 t_batch = t_train[:3]
-
 # print(x_batch)
 # print(t_batch)
 
@@ -28,4 +33,4 @@ grad_backprop = network.gradient(x_batch, t_batch)              # grads 반환
 for key in grad_numerical.keys():
     # W1, b1, W2, b2 에 대해 절대값을 구한 후, 그 절대값들의 평균을 구한다.
     diff = np.average(np.abs(grad_backprop[key] - grad_numerical[key]))
-    print(key + ":" + str(diff))
+    print(key, ", diff : ", str(diff))

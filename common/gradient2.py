@@ -12,7 +12,7 @@ import matplotlib.pylab as plt
 # 신경망에서는
 #   f: 손실 값 구하는 비용함수
 #   x: 벡터
-#       (1) 가중치(W1,W2..)의 하나의 벡터 w0, w1...
+#       (1) 가중치(W1,W2..)의 하나의 벡터값 - 예) W1(w0, w1, w2...) 에서 w0, w1... 등이 하나씩 x값으로 온다.
 #           또는
 #       (2) 편향(b1, b2..) 매개변수
 def numerical_gradient_v(f, x):
@@ -38,38 +38,38 @@ def numerical_gradient_v(f, x):
 
     return grad
 
-# f : 최적화하려는 함수
-# X : 행렬
-#       (1) 가중치 W의 형상은 (앞층의 뉴런수, 다음층의 뉴런수)
-#           또는
-#       (2) 편향 b의 형상은 앞층 뉴런이 없으므로 (다음층 뉴런수만,)
+
+"""
+    :parameter
+    f : 최적화하려는 함수
+    X : 행렬 또는 벡터 
+            (1) 가중치 W의 형상은 (앞층의 뉴런수, 다음층의 뉴런수)
+                또는
+            (2) 편향 b의 형상은 앞층 뉴런이 없으므로 (다음층 뉴런수만,)
+"""
 def numerical_gradient(f, X):
+    # 데이터가 하나인 경우
     if X.ndim == 1:
         return numerical_gradient_v(f, X)
+    # 배치처리 경우
     else:
         grad = np.zeros_like(X)
 
-        # 각 매개변수 W1(w0, w1, w2...), W2(w0, w1, w2...) 또는 b1, b2의 기울기를 구한다.
+        # 각 매개변수 W1(w0, w1, w2...), W2(w0, w1, w2...) 또는 b1(b0, b1, b2...), b2(b0, b1, b2...)의 기울기를 구한다.
         for idx, x in enumerate(X):
             grad[idx] = numerical_gradient_v(f, x)
+            print(grad[idx])
 
         return grad
 
 
-# 변수가 두 개인(여기서는 x[0], x[1]) 함수
 def function_2(x):
+    # 데이터가 하나인 경우 x = [x1, x2, x3]
     if x.ndim == 1:
-        return np.sum(x ** 2)   # x[0] ** 2 + x[1] ** 2
+        return np.sum(x ** 2)           # 예) x[0] ** 2 + x[1] ** 2 + x[2] ** 2
+    # 배치처리 경우
     else:
-        return np.sum(x ** 2, axis=1)
-
-
-# 접선 방정식 구하기
-def tangent_line(f, a):
-    d = numerical_gradient(f, a)
-    print(d)
-
-    return lambda x: d * x - d * a + f(a)
+        return np.sum(x ** 2, axis=1)   # 각 행별 원소들을 제곱해서 합한 것 예) x11[0] ** 2 + x12[1] ** 2 + x13[1] ** 2
 
 
 if __name__ == '__main__':
@@ -97,7 +97,7 @@ if __name__ == '__main__':
     plt.ylabel('x1')
     plt.grid()
     plt.draw()
-    # plt.show()
+    plt.show()
 
 
     #############################

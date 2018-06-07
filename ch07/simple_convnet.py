@@ -10,7 +10,7 @@ import pickle
 import numpy as np
 from collections import OrderedDict
 from common.layers import *
-from common.gradient import numerical_gradient
+from common.gradient2 import numerical_gradient
 
 
 class SimpleConvNet:
