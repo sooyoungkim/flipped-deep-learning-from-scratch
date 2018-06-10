@@ -13,7 +13,7 @@ from common import gradient2
     가중치 감소, 드롭아웃, 배치 정규화 구현
     Parameters
     ----------
-    input_size : 입력 크기（MNIST의 경우엔 784）
+    input_size : 입력 데이터 크기（MNIST의 경우엔 784）
     hidden_size_list : 각 은닉층의 뉴런 수를 담은 리스트（e.g. [100, 100, 100]）
     output_size : 출력 크기（MNIST의 경우엔 10）
     activation : 활성화 함수 - 'relu' 혹은 'sigmoid'
@@ -50,12 +50,13 @@ class MultiLayerNetExtend:
         activation_layer = {'sigmoid': layers.Sigmoid, 'relu': layers.Relu}
         self.layers = OrderedDict()
 
+        # < 은닉층 생성 >
         # self.hidden_layer_num 개수만큼
         for idx in range(1, self.hidden_layer_num + 1):
             # (1) Affine 계층
-            self.layers['Affine' + str(idx)] = layers.Affine(self.params['W' + str(idx)],
-                                                      self.params['b' + str(idx)])
-            # (2) < BatchNormalization 계층 >
+            self.layers['Affine' + str(idx)] = layers.Affine(self.params['W' + str(idx)], self.params['b' + str(idx)])
+
+            # (2) BatchNormalization 계층
             if self.use_batchnorm:
                 # 각 계층별 배치 정규화 계층에서 사용할 매개변수 최기화
                 # 원본 그대로에서 시작하는 것으로 초기화. 1배 확대(gamma), 이동 0(beta)
@@ -63,18 +64,19 @@ class MultiLayerNetExtend:
                 self.params['beta' + str(idx)] = np.zeros(hidden_size_list[idx - 1])    # 0
                 self.layers['BatchNorm' + str(idx)] = layers.BatchNormalization(self.params['gamma' + str(idx)], self.params['beta' + str(idx)])
 
-            # (3) Activation function
+            # (3) 활성화 함수
             self.layers['Activation_function' + str(idx)] = activation_layer[activation]()
 
             # (4) Dropout 계층
             if self.use_dropout:
                 self.layers['Dropout' + str(idx)] = layers.Dropout(dropout_ration)
 
-        # 출력층 Affine
+        # < 출력층 Affine 생성 >
         idx = self.hidden_layer_num + 1
         self.layers['Affine' + str(idx)] = layers.Affine(self.params['W' + str(idx)], self.params['b' + str(idx)])
 
-        # 출력층
+        # < 출력층 생성 >
+        # 출력층 활성화 함수로 Softmax, 손실함수로 cross_entropy_error 사용
         self.last_layer = layers.SoftmaxWithLoss()
 
     def __init_weight(self, weight_init_std):

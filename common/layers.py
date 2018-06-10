@@ -55,8 +55,8 @@ class Sigmoid:
 
 class Affine:
     def __init__(self, W, b):
-        self.W = W      # 2차원 데이터 (이전층 뉴런수 X 다음층의 뉴런수)
-        self.b = b
+        self.W = W      # 가중치 파라미터 : 2차원 데이터 (이전층 뉴런수 X 다음층의 뉴런수)
+        self.b = b      # 편향 파라미너
         self.x = None
         self.dW = None  # 가중치 매개변수의 미분
         self.db = None  # 편향 매개변수의 미분
@@ -270,10 +270,13 @@ class Dropout:
             # dropout 비율만큼 무작위 삭제, 신호 흘리지 않는다.
             # dropout_ratio 보다 큰 값은 True로 작거나 같으면 False로 저장
             # 배치사이즈 100이면 True 또는 Fasle로 이루어진 (100, 100)
-            # *x.shape = x.shape[0]
-            self.mask = np.random.rand(x.shape[0]) > self.dropout_ratio
+            # [주의] *x.shape != x.shape[0]
+            self.mask = np.random.rand(*x.shape) > self.dropout_ratio
             # drop!!
             # True -> * 1,  False -> * 0
+
+            # print("x.shape", x.shape)
+            # print("self.mask.shape", self.mask.shape)
             return x * self.mask
             # [[0.         0.         0.... 0.         0.         0.3155615]
             #  [0.         0.         0.... 0.         0.         0.07640247]
@@ -367,14 +370,20 @@ class Convolution:
     def backward(self, dout):
         # print("Convolution backward dout : ", dout)
         FN, C, FH, FW = self.W.shape
-        dout = dout.tranpose(0, 2, 3, 1).reshape(-1, FN)
-        # dout = dout.reshape(-1, FN)
+
+        # print(dout.shape)
+        # (100, 30, 24, 24)
+
+        # todo transpose 왜?
+        # 필터 개수만큼씩으로 잘라 몇 개의 묶음으로 만든다.
+        dout = dout.transpose(0, 2, 3, 1).reshape(-1, FN)
+
 
         self.db = np.sum(dout, axis=0)
-        self.dW = np.dot(self.col.T, dout)
+        self.dW = np.dot(self.col.T, dout)  # 입력 데이터에서 필터를 적용하는 영역별로 가로로 전개한 데이터와 dout값 내적
         self.dW = self.dW.transpose(1, 0).reshape(FN, C, FH, FW)
 
-        dcol = np.dot(dout, self.col_W.T)
+        dcol = np.dot(dout, self.col_W.T)   # forward에서 변형시켜놓은 필터
         dx = util.col2im(dcol, self.x.shape, FH, FW, self.stride, self.pad)
 
         return dx
@@ -401,40 +410,44 @@ class Pooling:
         # conv 계층의 입력 데이터와는 다르게 가로로 전개한 데이터를 풀링 크기(pool_h * pool_w)만큼 단위로 2차원 배열을 만든다(reshape)
         # 풀링 크기 만큼씩 크기로 원소 수를 유지하며 몇 개의 묶음으로 변형된다.
         col = col.reshape(-1, self.pool_h * self.pool_w)
-        # 행(row)별 최댓값을 구한다.
+        # 행(row)별 최댓값의 인덱스를 구한다.
         arg_max = np.argmax(col, axis=1)
         out = np.max(col, axis=1)
         out = out.reshape(N, out_h, out_w, C).transpose(0, 3, 1, 2)
 
         self.x = x
+        # 최대값 위치 저장
         self.arg_max = arg_max
-        print("arg_max  : ", self.arg_max, self.arg_max.size)
 
         return out
 
     def backward(self, dout):
         # print("Pooling backward dout : ", dout)
 
-        # 왜??
+        # todo transpose 왜??
         dout = dout.transpose(0, 2, 3, 1)
 
         pool_size = self.pool_h * self.pool_w
         # max pooling의 역젼파값 : 최대값이 속해 있는 요소의 로컬 그래디언트는 1, 나머지는 0이다.
         # dout 원소 개수 X pooling size 의 matrix 생성
         # 최대값이 아닌 원소들의 로컬 그래디언트는 0이므로 dout을 곱해도 0이 되므로 0으로 초기화시킨다.
+        # 248P
         dmax = np.zeros((dout.size, pool_size))
-        print("dmax.shape before : ", dmax.shape)
+        # print("dmax.shape before : ", dmax.shape)
 
         # arg_max.size == dout.flatten size ??
         # zip 형태로 묶어, dmax의 해당 위치에 dout flatten 값을 하나씩 담는다. (최대값이 속해 있는 요소의 로컬 그래디언트는 1 * dout)
+        # 최대값의 위치에 dout 요소를 하나씩 넣는다
         dmax[np.arange(self.arg_max.size), self.arg_max.flatten()] = dout.flatten()
+        # 데이터 하나의 형상으로
         dmax = dmax.reshape(dout.shape + (pool_size,))
-        print("dmax.shape after : ", dmax.shape)
 
         # 채널별 pooling 적용 영역끼리 하나의 row로 묶는다. ???
         # 1row - 모든 데이터에대해 채널1의 폴링적용영역 전체 ?
         # 2row - 모든 데이터에대해 채널2의 폴링적용영역 전체 ?
-        print("dmax.shape 0, 1, 2", dmax.shape[0], dmax.shape[1], dmax.shape[2])
+        # print("dmax.shape 0, 1, 2", dmax.shape[0], dmax.shape[1], dmax.shape[2])
+        # (채널 X H X W) 만큼씩으로 묶는다.
+        # 데이터를 하나로 편 것의 묶음으로 만든다.
         dcol = dmax.reshape(dmax.shape[0] * dmax.shape[1] * dmax.shape[2], -1)
         dx = util.col2im(dcol, self.x.shape, self.pool_h, self.pool_w, self.stride, self.pad)
 
@@ -530,17 +543,20 @@ if __name__ == '__main__':
     # dout = np.array([[111, 112, 113, 114, 115, 116, 117],
     #                  [161, 162, 163, 164, 165, 166, 167],
     #                  [171, 172, 173, 174, 175, 176, 177]])
+    # print(dout.size)
+    # # 21
     #
-    # arg_max =  np.array([[5, 7, 5, 7, 5, 7, 5],
+    # arg_max = np.array([[5, 7, 5, 7, 5, 7, 5],
     #                      [1, 1, 1, 1, 1, 1, 1],
     #                      [2, 2, 2, 2, 2, 2, 2]])
     # print(arg_max.size, arg_max.flatten())
     # # 21 [5 7 5 7 5 7 5 1 1 1 1 1 1 1 2 2 2 2 2 2 2]
-    #
+    # #
     # pool_size = 3 * 3
     # dmax = np.zeros((dout.size, pool_size))
     # print(dmax)
-    # print("dmax.shape before : ", dmax.shape) # (21, 9)
+    # print("dmax.shape before : ", dmax.shape)
+    # # (21, 9)
     #
     # print(np.arange(arg_max.size), arg_max.flatten())
     # # [ 0  1  2  3  4  5  6  7  8  9 10 11 12 13 14 15 16 17 18 19 20] [5 7 5 7 5 7 5 1 1 1 1 1 1 1 2 2 2 2 2 2 2]
@@ -548,12 +564,17 @@ if __name__ == '__main__':
     # print(dmax)
     # # zip 형태로 (0, 5), (1, 7), (2, 5) 등..의 위치에 dout flatten 값을 넣는다.
     #
-    #
-    #
-    # # # 최대값
-    # # dmax[np.arange(self.arg_max.size), self.arg_max.flatten()] = dout.flatten()
-    # # dmax = dmax.reshape(dout.shape + (pool_size,))
-    # # print("dmax.shape after : ", dmax.shape)
+    # # 최대값
+    # dmax[np.arange(arg_max.size), arg_max.flatten()] = dout.flatten()
+    # dmax = dmax.reshape(dout.shape + (pool_size,))
+    # print((pool_size,))
+    # # (9,)
+    # print(dout.shape)
+    # # (3, 7)
+    # print("dmax.shape after : ", dmax.shape)
+    # # dmax.shape shapafter: (3, 7, 9)
+    # print(dmax.shape[0], dmax.shape[1], dmax.shape[2])
+    # # 3 7 9
 
 
 

@@ -21,6 +21,7 @@ class Momentum:
         self.lr = lr
         self.momentum = momentum
         self.v = None
+        print(self.lr, self.momentum)
 
     def update(self, params, grads):
         if self.v is None:

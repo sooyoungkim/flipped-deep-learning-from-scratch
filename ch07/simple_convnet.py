@@ -7,7 +7,6 @@ import sys, os
 
 sys.path.append(os.pardir)  # 부모 디렉터리의 파일을 가져올 수 있도록 설정
 import pickle
-import numpy as np
 from collections import OrderedDict
 from common.layers import *
 from common.gradient2 import numerical_gradient
@@ -15,56 +14,60 @@ from common.gradient2 import numerical_gradient
 
 class SimpleConvNet:
     """단순한 합성곱 신경망
+    데이터 하나에 대한 CNN 처리
 
     conv - relu - pool - affine - relu - affine - softmax
 
     Parameters
     ----------
-    input_size : 입력 크기（MNIST의 경우엔 784）
+    input_dim : 입력 데이터 차원수
     hidden_size_list : 각 은닉층의 뉴런 수를 담은 리스트（e.g. [100, 100, 100]）
     output_size : 출력 크기（MNIST의 경우엔 10）
-    activation : 활성화 함수 - 'relu' 혹은 'sigmoid'
     weight_init_std : 가중치의 표준편차 지정（e.g. 0.01）
         'relu'나 'he'로 지정하면 'He 초깃값'으로 설정
         'sigmoid'나 'xavier'로 지정하면 'Xavier 초깃값'으로 설정
+    activation : 활성화 함수 - 'relu' 혹은 'sigmoid'
     """
 
     # 채널 1개, 28 X 28 데이터 처리
-    def __init__(self, input_dim=(1, 28, 28),
-                 conv_param={'filter_num': 30, 'filter_size': 5, 'pad': 0, 'stride': 1},
-                 hidden_size=100, output_size=10,
-                 weight_init_std=0.01):
-        filter_num = conv_param['filter_num']  # conv 계층에서 FN 만큼 출력된다
-        filter_size = conv_param['filter_size']
-        filter_pad = conv_param['pad']
-        filter_stride = conv_param['stride']
-        input_size = input_dim[1]
+    def __init__(self, input_dim=(1, 28, 28)
+                 , conv_param={'filter_num': 30, 'filter_size': 5, 'pad': 0, 'stride': 1}
+                 , hidden_size=100
+                 , output_size=10
+                 , weight_init_std=0.01):
+        filter_num = conv_param['filter_num']       # conv 계층에서 FN 만큼 출력된다
+        filter_size = conv_param['filter_size']     # 필터 크기
+        filter_pad = conv_param['pad']              # 필터 패딩
+        filter_stride = conv_param['stride']        # 스트라이드
+        input_size = input_dim[1]                   # 차원수
+
+        # Conv 데이터 하나의 출력크키 즉, OH와 OW = ((입력크기 - 필터크기 + 2*패딩) / 스트라이드) + 1
         conv_output_size = (input_size - filter_size + 2 * filter_pad) / filter_stride + 1
+        # Conv1(전체 결과 : FN X OH X OW) -> Relu1 -> 의 출력 결과가 Pooling의 입력값이 된다.
         # 입력 데이터의 채널 수 그대로 출력 데이터로 내보낸다. (채널마다 독립적으로 계산)
         pool_output_size = int(filter_num * (conv_output_size / 2) * (conv_output_size / 2))
 
         # (1) 가중치 초기화
         self.params = {}
-        # conv계층 필터 파라미터
-        self.params['W1'] = weight_init_std * \
-                            np.random.randn(filter_num, input_dim[0], filter_size, filter_size)
+        # conv계층 - 필터 파라미터 : FN X C X FH X FW
+        self.params['W1'] = weight_init_std * np.random.randn(filter_num, input_dim[0], filter_size, filter_size)
+        # conv계층 - 편향  : FN
         self.params['b1'] = np.zeros(filter_num)
 
         # < pool 계층은 학습할 매개변수가 없다 >
 
-        # affine 계층 가중치 파라미터
-        self.params['W2'] = weight_init_std * \
-                            np.random.randn(pool_output_size, hidden_size)
+        # affine 계층 - 가중치 파라미터 :
+        self.params['W2'] = weight_init_std * np.random.randn(pool_output_size, hidden_size)
         self.params['b2'] = np.zeros(hidden_size)
+
         # 마지막 affine 계층 가중치 파라미터
-        self.params['W3'] = weight_init_std * \
-                            np.random.randn(hidden_size, output_size)
+        self.params['W3'] = weight_init_std * np.random.randn(hidden_size, output_size)
         self.params['b3'] = np.zeros(output_size)
 
         # (2) CNN 계층 생성
         self.layers = OrderedDict()
-        self.layers['Conv1'] = Convolution(self.params['W1'], self.params['b1'],
-                                           conv_param['stride'], conv_param['pad'])
+        # self.layers['Conv1'] = Convolution(self.params['W1'], self.params['b1'], conv_param['stride'], conv_param['pad'])
+        self.layers['Conv1'] = Convolution(self.params['W1'], self.params['b1'], filter_stride, filter_pad)
         self.layers['Relu1'] = Relu()
         self.layers['Pool1'] = Pooling(pool_h=2, pool_w=2, stride=2)
         self.layers['Affine1'] = Affine(self.params['W2'], self.params['b2'])
@@ -88,8 +91,8 @@ class SimpleConvNet:
         t : 정답 레이블
         """
         y = self.predict(x)
-        # 예측 값(predict)을 손실함수의 입력값으로 사용
-        #   즉, 계층 맨 앞에서부터 마지막 계층까지 forward를 처리한다.
+        # 신경망이 예측한 값 y를 손실함수의 입력값으로 사용
+        #      출력층 활성화함수 + 손실함수를 적용해서 손실값 Loss를 구한다.
         return self.last_layer.forward(y, t)
 
     def accuracy(self, x, t, batch_size=100):
