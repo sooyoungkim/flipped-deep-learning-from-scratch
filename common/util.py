@@ -13,6 +13,24 @@ def smooth_curve(x):
     return y[5:len(y) - 5]
 
 
+def shuffle_dataset(x, t):
+    """데이터셋을 뒤섞는다.
+    Parameters
+    ----------
+    x : 훈련 데이터
+    t : 정답 레이블
+
+    Returns
+    -------
+    x, t : 뒤섞은 훈련 데이터와 정답 레이블
+    """
+    permutation = np.random.permutation(x.shape[0])
+    x = x[permutation, :] if x.ndim == 2 else x[permutation, :, :, :]
+    t = t[permutation]
+
+    return x, t
+
+
 def im2col(input_data, filter_h, filter_w, stride=1, pad=0):
     """다수의 4차원 이미지(데이터)를 입력받아 2차원 배열로 변환한다(평탄화).
        합성곱에서 필터링(가중치 계산)하기 좋게 전개하는 함수이다.

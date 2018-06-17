@@ -171,7 +171,6 @@ class BatchNormalization:
         # 입력값 x가 2차원이 아니면 (즉, 데이터가 1개만 입력된 경우)
         if x.ndim != 2:
             N, C, H, W = x.shape
-            print("BatchNormalization forward -> N: {}, C: {}, H: {}, W: {}".format(N, C, H, W))
             x = x.reshape(N, -1)
 
         out = self.__forward(x, train_flag)
@@ -183,9 +182,8 @@ class BatchNormalization:
             self.running_mean = np.zeros(D)
             self.running_var = np.zeros(D)
 
-        # 학습(훈련) 과정이면
+        # 학습(훈련) 과정이면 배치 정규화 적용
         if train_flag:
-            #
             # "열을 기준"으로 평균 (mean) 계산
             mu = x.mean(axis=0)
             # 편차 (subtract mean vector) 계산
@@ -220,7 +218,6 @@ class BatchNormalization:
         """
         out = self.gamma * xn + self.beta
         return out
-
 
     def backward(self, dout):
         if dout.ndim != 2 :

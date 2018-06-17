@@ -37,7 +37,7 @@ class Trainer:
         # 1에폭이 되기위한 처리 반복 횟수
         self.iter_per_epoch = max(self.train_size / mini_batch_size, 1)
         # 최대 반복 수 = 원하는 에폭 수 * 1에폭당 반복 횟수
-        self.max_iter = int(epochs * self.iter_per_epoch)
+        self.max_iter = int(epochs * self.iter_per_epoch)   # 실수이면 소수점이하 버림
         self.current_iter = 0
         self.current_epoch = 0
 
@@ -61,7 +61,7 @@ class Trainer:
         # 새로 업데이트한 가중치 적용해서 손실 값 구하기 -> forward
         loss = self.network.loss(x_batch, t_batch)
         self.train_loss_list.append(loss)
-        if self.verbose: print("train loss:" + str(loss))
+        # if self.verbose: print("train loss:" + str(loss))
 
         # 1 에폭당 샘플데이터로 정확도 이력 저장
         if self.current_iter % self.iter_per_epoch == 0:
