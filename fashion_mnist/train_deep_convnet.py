@@ -1,6 +1,7 @@
 import tensorflow as tf
 import numpy as np
-from ch08 import deep_convnet2
+import matplotlib.pyplot as plt
+from network.vgg_like.deep_convnet35 import DeepConvNet
 from common.trainer import Trainer
 
 ##############################################################################
@@ -20,11 +21,10 @@ x_test, t_test = x_test[:1000], t_test[:1000]
 x_train = x_train.astype('float32') / 255
 x_test = x_test.astype('float32') / 255
 
-
 ###################################################################
 # Fashion Mnist 데이터가 기존 Mnist와 데이터 포맷이 달라서 코드가 호환이 안된다.
 # 아래 코드를 사용해서 변환하면된다
-###################################################################
+##################################$#################################
 x_train=np.expand_dims(x_train, axis=1)
 x_test=np.expand_dims(x_test, axis=1)
 
@@ -33,23 +33,32 @@ print("x_train shape:", x_train.shape, "t_train shape:", t_train.shape)
 # 변경후 : x_train shape: (60000, 1, 28, 28) t_train shape: (60000,)
 
 
-# 시간이 오래 걸릴 경우 데이터를 줄인다.
-# x_train, t_train = x_train[:5000], t_train[:5000]
-# x_test, t_test = x_test[:1000], t_test[:1000]
-
-network = deep_convnet2.DeepConvNet()
+network = DeepConvNet()
+# network.load_params("fashion_mnist_init_params.pkl")  # 파일에 저장된 매개변수 사용해서 학습 시작할 경우에 사용
 trainer = Trainer(network, x_train, t_train, x_test, t_test
-                  , epochs=20
+                  , epochs=10
                   , mini_batch_size=100
                   , optimizer='Adam'
                   , optimizer_param={'lr':0.001}
+                  # , optimizer_param={'lr':0.0001}
                   , evaluate_sample_num_per_epoch=1000)
 trainer.train()
 
-# 매개변수 보관
-network.save_params("fashion_deep_conv_params.pkl")
-print("Saved Network Parameters!")
 
-# =============== Final Test Accuracy ===============
-# test acc:86.7
-# Saved Network Parameters!
+# # 매개변수 보관
+# network.save_params("fashion_deep_conv_params.pkl")
+# print("Saved Network Parameters!")
+
+train_acc_list, test_acc_list = trainer.train_acc_list, trainer.test_acc_list
+
+# 그래프 그리기==========
+markers = {'train': 'o', 'test': 's'}
+x = np.arange(len(train_acc_list))
+plt.plot(x, train_acc_list, marker='o', label='train', markevery=10)
+plt.plot(x, test_acc_list, marker='s', label='test', markevery=10)
+plt.xlabel("epochs")
+plt.ylabel("accuracy")
+# plt.ylim(0, 1.0)
+plt.ylim(0, 100.0)
+plt.legend(loc='lower right')
+plt.show()
