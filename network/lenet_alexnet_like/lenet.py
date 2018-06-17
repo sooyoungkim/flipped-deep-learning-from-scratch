@@ -16,14 +16,15 @@ class LeNet:
     """
 
     def __init__(self, input_dim=(1, 28, 28),  # 입력데이터 차원 수
+                 #  6 * ((28 + 2*0 - 5)/1 + 1) * =  6 * 24 * 24 -> pooling 적용 ->  6 * ((24 - 2)/2 + 1) *  = 16 * 12 * 12
+                 # 16 * ((12 + 2*0 - 5)/1 + 1) * = 16 *  8 *  8 -> pooling 적용 -> 16 * (( 8 - 2)/2 + 1) *  = 16 *  4 *  4
                  conv_param_1={'filter_num': 6, 'filter_size': 5, 'pad': 0, 'stride': 1},
                  conv_param_2={'filter_num': 16, 'filter_size': 5, 'pad': 0, 'stride': 1},
                  hidden_size_list=[100],
                  output_size=10):
         self.conv_layer_num = len([conv_param_1, conv_param_2])
         self.affine_layer_size_list = hidden_size_list + [output_size]
-        self.affine_layer_num = len(self.affine_layer_size_list)
-        self.conv_affine_layer_num = self.conv_layer_num + self.affine_layer_num
+        self.conv_affine_layer_num = self.conv_layer_num + len(self.affine_layer_size_list)
 
         # 가중치 초기값
         # 각 층의 뉴런(노드) 하나당 "앞 층의 몇 개 뉴런"과 연결되는가（채널 * 필터크기)
@@ -46,20 +47,21 @@ class LeNet:
 
 
         # affine 계층 가중치 초기화
-        all_size_list = [16 * 4 * 4] + self.affine_layer_size_list
-        for idx in range(0, self.affine_layer_num):
-            i = idx + self.conv_layer_num
-            self.params['W' + str(i + 1)] = wight_init_scales[self.conv_layer_num + i] * np.random.randn(all_size_list[idx], all_size_list[idx+1])
-            self.params['b' + str(i + 1)] = np.zeros(all_size_list[idx+1])
+        self.params['W3'] = wight_init_scales[2] * np.random.randn(16 * 4 * 4, hidden_size_list[0])
+        self.params['b3'] = np.zeros(hidden_size_list[0])
+        self.params['W4'] = wight_init_scales[3] * np.random.randn(hidden_size_list[0], output_size)
+        self.params['b4'] = np.zeros(output_size)
+
 
         # 계층 생성
         self.layers = OrderedDict()
         # 합성곱-풀링 계층
-        for idx, conv_param in enumerate([conv_param_1, conv_param_2]):
-            idx += 1
-            self.layers['Conv' + str(idx)] = Convolution(self.params['W' + str(idx)], self.params['b' + str(idx)], conv_param['stride'], conv_param['pad'])
-            self.layers['Relu' + str(idx)] = Relu()
-            self.layers['Pool' + str(idx)] = Pooling(pool_h=2, pool_w=2, stride=2)
+        self.layers['Conv1'] = Convolution(self.params['W1'], self.params['b1'], conv_param_1['stride'], conv_param_1['pad'])
+        self.layers['Relu1'] = Relu()
+        self.layers['Pool1'] = Pooling(pool_h=2, pool_w=2, stride=2)
+        self.layers['Conv2'] = Convolution(self.params['W2'], self.params['b2'], conv_param_2['stride'], conv_param_2['pad'])
+        self.layers['Relu2'] = Relu()
+        self.layers['Pool2'] = Pooling(pool_h=2, pool_w=2, stride=2)
 
         # 은닉층
         self.layers['Affine3'] = Affine(self.params['W3'], self.params['b3'])
