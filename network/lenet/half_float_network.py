@@ -1,7 +1,7 @@
 import sys, os
 sys.path.append(os.pardir)  # 부모 디렉터리의 파일을 가져올 수 있도록 설정
 import numpy as np
-from network.lenet_alexnet_like.lenet import LeNet
+from network.lenet_like.lenet import LeNet
 from dataset.mnist import load_mnist
 
 

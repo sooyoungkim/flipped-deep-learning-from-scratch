@@ -1,7 +1,12 @@
+##############################################################################
+#
+# Fashion Minit 에 LeNet 적용해서 인식률 높여보기
+#
+##############################################################################
 import tensorflow as tf
 import numpy as np
 import matplotlib.pyplot as plt
-from network.lenet_alexnet_like.lenet import LeNet
+from network.lenet.lenet import LeNet
 from common.trainer import Trainer
 
 ##############################################################################

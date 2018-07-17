@@ -1,7 +1,13 @@
+##############################################################################
+#
+# Fashion Minit 에 Custom하게 만든 알고리즘 적용해서 인식률 높이기
+#   - network 디렉토리에 있는 알고리즘을 이용해볼 수 있다.
+#
+##############################################################################
 import tensorflow as tf
 import numpy as np
 import matplotlib.pyplot as plt
-from network.vgg_like.deep_convnet35 import DeepConvNet
+from network.vgg_like.deep_convnet35_en import DeepConvNet
 from common.trainer import Trainer
 
 ##############################################################################
@@ -28,7 +34,7 @@ x_test = x_test.astype('float32') / 255
 x_train=np.expand_dims(x_train, axis=1)
 x_test=np.expand_dims(x_test, axis=1)
 
-print("x_train shape:", x_train.shape, "t_train shape:", t_train.shape)
+# print("x_train shape:", x_train.shape, "t_train shape:", t_train.shape)
 # 변경전 : x_train shape: (60000, 28, 28) t_train shape: (60000,)
 # 변경후 : x_train shape: (60000, 1, 28, 28) t_train shape: (60000,)
 
@@ -36,11 +42,10 @@ print("x_train shape:", x_train.shape, "t_train shape:", t_train.shape)
 network = DeepConvNet()
 # network.load_params("fashion_mnist_init_params.pkl")  # 파일에 저장된 매개변수 사용해서 학습 시작할 경우에 사용
 trainer = Trainer(network, x_train, t_train, x_test, t_test
-                  , epochs=10
+                  , epochs=1
                   , mini_batch_size=100
                   , optimizer='Adam'
                   , optimizer_param={'lr':0.001}
-                  # , optimizer_param={'lr':0.0001}
                   , evaluate_sample_num_per_epoch=1000)
 trainer.train()
 
